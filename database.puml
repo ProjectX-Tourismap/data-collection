@@ -12,46 +12,46 @@ entity CityCodes {
 
 entity Categories {
 	id [int]
-	name [string]
+	name [text]
 }
 
 entity ZooEvents {
-	id
-	zoo_id
-	name
-	description
+	id [int]
+	zoo_id [int]
+	name [text]
+	description [text]
 	---
-	location
-	start_time
-	end_time
+	location [text]
+	start_time [date]
+	end_time [date]
 }
 
 entity Entities {
-    id
-    name
-    description
-    picture
-    categoryId
+    id [int]
+    name [text]
+    description [text]
+    picture [text]
+    categoryId [int]
     ----
-    geo
-    pref
-    city
+    geo [geometry]
+    prefId [int]
+    cityId [int]
 }
 
 entity TempleData {
-    id
-    entityId
-    deity
-    luck
-    history
+    id [int]
+    entityId [int]
+    deity [text]
+    luck [text]
+    history [text]
 }
 
 entity ZooData {
-    id
-    entityId
-    map
-    open_time
-    clone_time
+    id [int]
+    entityId [int]
+    map [text]
+    open_time [time]
+    clone_time [time]
 }
 
 Entities --{ TempleData
