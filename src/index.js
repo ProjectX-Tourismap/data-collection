@@ -1,8 +1,25 @@
 /* eslint-disable no-console */
 import dotenv from 'dotenv';
 import inquirer from 'inquirer';
+import mysql from 'mysql2';
+import db from '../db/models';
 
 dotenv.config();
+
+if (db.sequelize.getDialect() === 'mysql') {
+  const connection = mysql.createConnection({
+    host: process.env.DB_HOST,
+    port: process.env.DB_PORT,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASS,
+  });
+  connection.query(`CREATE DATABASE IF NOT EXISTS ${db.sequelize.options.database} CHARACTER SET utf8 COLLATE utf8_general_ci`, (err) => {
+    connection.close();
+    db.sequelize.sync();
+  });
+} else {
+  db.sequelize.sync();
+}
 
 const typeRunner = {
   Manhole() {

@@ -15,43 +15,43 @@ entity Categories {
 	name [text]
 }
 
+entity Entities {
+    id [int]
+    name [text]
+    desc [text]
+    picture [text]
+    category_id [int]
+    ----
+    geo [geometry]
+    pref_id [int]
+    city_id [int]
+}
+
+entity ZooData {
+    id [int]
+    entity_id [int]
+    map [text]
+    open_time [time]
+    close_time [time]
+}
+
 entity ZooEvents {
 	id [int]
 	zoo_id [int]
 	name [text]
-	description [text]
+	desc [text]
 	---
 	location [text]
 	start_time [date]
 	end_time [date]
 }
 
-entity Entities {
-    id [int]
-    name [text]
-    description [text]
-    picture [text]
-    categoryId [int]
-    ----
-    geo [geometry]
-    prefId [int]
-    cityId [int]
-}
-
 entity TempleData {
     id [int]
-    entityId [int]
+    entity_id [int]
     deity [text]
     luck [text]
     history [text]
-}
-
-entity ZooData {
-    id [int]
-    entityId [int]
-    map [text]
-    open_time [time]
-    clone_time [time]
 }
 
 Entities --{ TempleData
