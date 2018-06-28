@@ -1,0 +1,68 @@
+@startuml
+
+entity PrefCodes {
+	id [int]
+	name [text]
+}
+
+entity CityCodes {
+	id [int]
+	name [text]
+}
+
+entity Categories {
+	id [int]
+	name [string]
+}
+
+entity Manholes {
+	id
+	name
+	description
+	picture
+	---
+	geo
+	pref
+	city
+}
+
+entity Temples {
+	id
+	name
+	description
+	picture
+	deity
+	luck
+	history
+	---
+	geo
+	pref
+	city
+}
+
+entity Zoos {
+	id
+	name
+	description
+	picture
+	map
+	open_time
+	close_time
+	---
+	geo
+	pref
+	city
+}
+
+entity ZooEvents {
+	id
+	zoo_id
+	name
+	description
+	---
+	location
+	start_time
+	end_time
+}
+
+@enduml
