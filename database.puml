@@ -15,45 +15,6 @@ entity Categories {
 	name [string]
 }
 
-entity Manholes {
-	id
-	name
-	description
-	picture
-	---
-	geo
-	pref
-	city
-}
-
-entity Temples {
-	id
-	name
-	description
-	picture
-	deity
-	luck
-	history
-	---
-	geo
-	pref
-	city
-}
-
-entity Zoos {
-	id
-	name
-	description
-	picture
-	map
-	open_time
-	close_time
-	---
-	geo
-	pref
-	city
-}
-
 entity ZooEvents {
 	id
 	zoo_id
@@ -64,5 +25,41 @@ entity ZooEvents {
 	start_time
 	end_time
 }
+
+entity Entities {
+    id
+    name
+    description
+    picture
+    categoryId
+    ----
+    geo
+    pref
+    city
+}
+
+entity TempleData {
+    id
+    entityId
+    deity
+    luck
+    history
+}
+
+entity ZooData {
+    id
+    entityId
+    map
+    open_time
+    clone_time
+}
+
+Entities --{ TempleData
+Entities --{ ZooData
+ZooData -{ ZooEvents
+
+PrefCodes --{ Entities
+CityCodes --{ Entities
+Categories --{ Entities
 
 @enduml
