@@ -1,9 +1,10 @@
-module.exports = (sequelize, DataTypes) => {
-  const temple_data = sequelize.define('temple_data', {
-    entity_id: DataTypes.INTEGER,
-    deity: DataTypes.STRING,
-    luck: DataTypes.STRING,
-    history: DataTypes.STRING,
-  }, {});
-  return temple_data;
-};
+module.exports = (sequelize, DataTypes) => sequelize.define('temple_data', {
+  entity_id: {
+    unique: true,
+    allowNull: false,
+    type: DataTypes.INTEGER,
+  },
+  deity: DataTypes.TEXT,
+  luck: DataTypes.TEXT,
+  history: DataTypes.TEXT,
+}, {});

@@ -1,4 +1,5 @@
 const dotenv = require('dotenv');
+
 dotenv.config();
 
 module.exports = {
@@ -7,7 +8,7 @@ module.exports = {
     password: process.env.DB_PASS,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
-    database: 'database_development',
+    database: 'tourismap_dev',
     dialect: 'mysql',
   },
   test: {
@@ -15,7 +16,7 @@ module.exports = {
     password: process.env.DB_PASS,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
-    database: 'database_test',
+    database: 'tourismap_test',
     dialect: 'mysql',
   },
   production: {
@@ -23,7 +24,7 @@ module.exports = {
     password: process.env.DB_PASS,
     host: process.env.DB_HOST,
     port: process.env.DB_PORT,
-    database: 'database_production',
+    database: 'tourismap_prod',
     dialect: 'mysql',
   },
 };

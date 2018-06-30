@@ -1,11 +1,23 @@
-module.exports = (sequelize, DataTypes) => {
-  const zoo_events = sequelize.define('zoo_events', {
-    zoo_id: DataTypes.INTEGER,
-    name: DataTypes.STRING,
-    desc: DataTypes.STRING,
-    location: DataTypes.STRING,
-    start_time: DataTypes.DATE,
-    end_time: DataTypes.DATE,
-  }, {});
-  return zoo_events;
-};
+module.exports = (sequelize, DataTypes) => sequelize.define('zoo_events', {
+  zoo_id: {
+    allowNull: false,
+    type: DataTypes.INTEGER,
+  },
+  name: {
+    allowNull: false,
+    type: DataTypes.TEXT,
+  },
+  desc: DataTypes.TEXT,
+  location: {
+    allowNull: false,
+    type: DataTypes.TEXT,
+  },
+  start_time: {
+    allowNull: false,
+    type: DataTypes.DATE,
+  },
+  end_time: {
+    allowNull: false,
+    type: DataTypes.DATE,
+  },
+}, {});

@@ -1,9 +1,14 @@
 module.exports = (sequelize, DataTypes) => {
-  const pref_codes = sequelize.define('pref_codes', {
-    name: DataTypes.STRING,
+  const prefCodes = sequelize.define('pref_codes', {
+    name: {
+      unique: true,
+      allowNull: false,
+      type: DataTypes.STRING,
+    },
   }, {});
-  pref_codes.associate = (models) => {
-    pref_codes.hasMany(models.entities, { foreignKey: 'pref_id' });
+  prefCodes.associate = (models) => {
+    prefCodes.hasMany(models.entities, { foreignKey: 'pref_id' });
+    prefCodes.hasMany(models.city_codes, { foreignKey: 'pref_id' });
   };
-  return pref_codes;
+  return prefCodes;
 };

@@ -1,9 +1,23 @@
 module.exports = (sequelize, DataTypes) => {
-  const city_code = sequelize.define('city_code', {
-    name: DataTypes.STRING,
+  const cityCodes = sequelize.define('city_codes', {
+    pref_id: {
+      allowNull: false,
+      unique: 'code',
+      type: DataTypes.INTEGER,
+    },
+    city_id: {
+      allowNull: false,
+      unique: 'code',
+      type: DataTypes.INTEGER,
+    },
+    name: {
+      allowNull: false,
+      unique: 'code',
+      type: DataTypes.STRING,
+    },
   }, {});
-  city_code.associate = (models) => {
-    city_code.hasMany(models.entities, { foreignKey: 'city_id' });
+  cityCodes.associate = (models) => {
+    cityCodes.hasMany(models.entities, { foreignKey: 'city_id' });
   };
-  return city_code;
+  return cityCodes;
 };

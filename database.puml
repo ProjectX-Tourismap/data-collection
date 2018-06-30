@@ -1,65 +1,78 @@
 @startuml
 
-entity PrefCodes {
-	id [int]
-	name [text]
+!define table(x) class x << (T,#ffebf3) >>
+hide methods
+
+skinparam classFontColor #3b0018
+skinparam classArrowColor #ff0066
+skinparam classBorderColor #ff0066
+skinparam classBackgroundColor ##f6f4ee
+skinparam shadowing false
+
+table(PrefCodes) {
+	id		int		auto_increment
+	name	string	unique	not null
 }
 
-entity CityCodes {
-	id [int]
-	name [text]
+table(CityCodes) {
+	id		int		auto_increment
+	name	string	unique:code not null
+	pref_id	int		unique:code not null
+	city_id	int		unique:code not null
 }
 
-entity Categories {
-	id [int]
-	name [text]
+table(Categories) {
+	id		int	auto_increment
+	name	string	unique	not null
 }
 
-entity Entities {
-    id [int]
-    name [text]
-    desc [text]
-    picture [text]
-    category_id [int]
-    ----
-    geo [geometry]
-    pref_id [int]
-    city_id [int]
+table(Entities) {
+    id			int		auto_increment
+    name		string	unique:geo	not null
+    desc		text
+    picture		text
+    category_id	int		unique:geo	not null
+    geo			geometry	unique:geo	not null
+    geo_text		string:40	not null
+    pref_id		int		not null
+    city_id		int		not null
 }
 
-entity ZooData {
-    id [int]
-    entity_id [int]
-    map [text]
-    open_time [time]
-    close_time [time]
+table(ZooData) {
+    id			int	auto_increment
+    entity_id		int	unique	not null
+    map			text
+    open_time	time	not null
+    close_time	time	not null
 }
 
-entity ZooEvents {
-	id [int]
-	zoo_id [int]
-	name [text]
-	desc [text]
-	---
-	location [text]
-	start_time [date]
-	end_time [date]
+table(ZooEvents) {
+	id			int	auto_increment
+	zoo_id		int	not null
+	name		text	not null
+	desc		text
+	location		text	not null
+	start_time		date	not null
+	end_time		date	not null
 }
 
-entity TempleData {
-    id [int]
-    entity_id [int]
-    deity [text]
-    luck [text]
-    history [text]
+table(TempleData) {
+    id		int	auto_increment
+    entity_id	int	unique	not null
+    deity		text
+    luck		text
+    history	text
 }
 
-Entities --{ TempleData
-Entities --{ ZooData
-ZooData -{ ZooEvents
+CityCodes <-right- PrefCodes : on id = pref_id
 
-PrefCodes --{ Entities
-CityCodes --{ Entities
-Categories --{ Entities
+TempleData <-right- Entities : on id = entity_id
+ZooData <-right- Entities : on id = entity_id
+ZooEvents <-right- ZooData : on id = zoo_id
+TempleData -[hidden]up- ZooData
+
+Entities <-- PrefCodes : on id = pref_id
+Entities <-- CityCodes : on id = city_id
+Entities <-right- Categories : on id = category_id
 
 @enduml

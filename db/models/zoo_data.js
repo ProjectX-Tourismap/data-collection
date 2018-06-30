@@ -1,12 +1,22 @@
 module.exports = (sequelize, DataTypes) => {
-  const zoo_data = sequelize.define('zoo_data', {
-    entity_id: DataTypes.INTEGER,
-    map: DataTypes.STRING,
-    open_time: DataTypes.TIME,
-    close_time: DataTypes.TIME,
+  const zooData = sequelize.define('zoo_data', {
+    entity_id: {
+      unique: true,
+      allowNull: false,
+      type: DataTypes.INTEGER,
+    },
+    map: DataTypes.TEXT,
+    open_time: {
+      allowNull: false,
+      type: DataTypes.TIME,
+    },
+    close_time: {
+      allowNull: false,
+      type: DataTypes.TIME,
+    },
   }, {});
-  zoo_data.associate = (models) => {
-    zoo_data.hasMany(models.zoo_events, { foreignKey: 'zoo_id' });
+  zooData.associate = (models) => {
+    zooData.hasMany(models.zoo_events, { foreignKey: 'zoo_id' });
   };
-  return zoo_data;
+  return zooData;
 };
