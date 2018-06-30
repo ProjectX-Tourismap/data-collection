@@ -8,17 +8,10 @@ module.exports = {
     },
     pref_id: {
       allowNull: false,
-      unique: 'code',
-      type: Sequelize.INTEGER,
-    },
-    city_id: {
-      allowNull: false,
-      unique: 'code',
       type: Sequelize.INTEGER,
     },
     name: {
       allowNull: false,
-      unique: 'code',
       type: Sequelize.STRING,
     },
     createdAt: {

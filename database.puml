@@ -16,9 +16,8 @@ table(PrefCodes) {
 
 table(CityCodes) {
 	id		int		auto_increment
-	name	string	unique:code not null
-	pref_id	int		unique:code not null
-	city_id	int		unique:code not null
+	name	string	not null
+	pref_id	int		not null
 }
 
 table(Categories) {

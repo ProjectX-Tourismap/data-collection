@@ -18,8 +18,7 @@ const prefCodes = [
 ];
 
 const typeRunner = {
-  CityCodes() {
-    const multiProgress = new MultiProgress(process.stdout);
+  CityCodes(multiProgress) {
     const prefProgress = multiProgress.newBar('Pref [:bar] :percent :current/:total', {
       complete: '=', incomplete: ' ', width: 20, total: prefCodes.length,
     });
@@ -39,8 +38,8 @@ const typeRunner = {
         cityProgress.total = data.length;
         cityProgress.curr = 0;
         return data.reduce((pre, cur) => pre.then(() => db.sequelize.models.city_codes.create({
+          id: parseInt(cur.id, 10),
           pref_id: index + 1,
-          city_id: parseInt(cur.id.substr(2, 3), 10),
           name: cur.name,
         })).then(() => {
           cityProgress.tick();
@@ -48,13 +47,9 @@ const typeRunner = {
       })
       .then(() => {
         prefProgress.tick();
-      }), Promise.resolve())
-      .then(() => {
-        multiProgress.terminate();
-      });
+      }), Promise.resolve());
   },
-  Manhole() {
-    const multiProgress = new MultiProgress(process.stdout);
+  Manhole(multiProgress) {
     const progress = multiProgress.newBar('Manhole [:bar] :percent :current/:total', {
       complete: '=', incomplete: ' ', width: 20, total: 0,
     });
@@ -64,37 +59,40 @@ const typeRunner = {
     }).then(row => axios({
       method: 'get',
       url: `http://manholemap.juge.me/customsearch?${querystring.stringify({
-        where: 'misc like \'東京都%\'',
+        where: 'misc like \'東京都%\' and text not like \'%\\n%\'',
         format: 'json',
       })}`,
-    }).then(response => response.data.reduce((pre, cur) => pre.then(() => axios({
-      method: 'get',
-      url: `http://www.finds.jp/ws/rgeocode.php?${querystring.stringify({
-        json: '',
-        lat: cur.lat,
-        lon: cur.lng,
-      })}`,
-    })).then(res => `${res.data.result.municipality.mcode}`)
-      .then(cityCode => db.sequelize.models.entities.create({
-        name: 'Manhole',
-        desc: cur.text,
-        category_id: (Array.isArray(row) ? row[0] : row).dataValues.id,
-        geo: db.Sequelize.fn('ST_GeomFromText', `POINT(${cur.lat} ${cur.lng})`),
-        geo_text: `${cur.lat},${cur.lng}`,
-        pref_id: cityCode.substr(0, 2),
-        city_id: cityCode.substr(2, 3),
-      }).then(() => {
-        progress.tick();
-      })), Promise.resolve()))).then(() => {
-      multiProgress.terminate();
-    });
+    }).then((response) => {
+      if (typeof response.data === 'string') response.data = JSON.parse(response.data.replace(/\t/g, ' '));
+      progress.total = response.data.length;
+      return response.data.reduce((pre, cur) => pre.then(() => axios({
+        method: 'get',
+        url: `http://www.finds.jp/ws/rgeocode.php?${querystring.stringify({
+          json: '',
+          lat: cur.lat,
+          lon: cur.lng,
+        })}`,
+      })).then(res => `${res.data.result.municipality.mcode}`).catch(() => Promise.resolve())
+        .then(cityCode => ((cityCode) ? db.sequelize.models.entities.create({
+          name: 'Manhole',
+          desc: cur.text,
+          category_id: (Array.isArray(row) ? row[0] : row).dataValues.id,
+          geo: db.Sequelize.fn('ST_GeomFromText', `POINT(${cur.lat} ${cur.lng})`),
+          geo_text: `${cur.lat},${cur.lng}`,
+          pref_id: cityCode.substr(0, 2),
+          city_id: cityCode,
+        }).catch(() => Promise.resolve()).then(() => {
+          progress.tick();
+        }) : Promise.resolve())), Promise.resolve());
+    }));
   },
-  async Temple() {
-    let start = 0;
+  async Temple(multiProgress) {
+    let start = 18000;
     const results = 100;
     let count = -1;
-    const multiProgress = new MultiProgress(process.stdout);
-    let progress;
+    const progress = multiProgress.newBar('Temple [:bar] :percent :current/:total', {
+      complete: '=', incomplete: ' ', width: 20, total: 0,
+    });
 
     let categoryId = await db.sequelize.models.categories.findOrCreate({
       where: { name: 'Temple' },
@@ -116,13 +114,9 @@ const typeRunner = {
           results,
         })}`,
       }).then((response) => {
-        if (!progress) {
-          progress = multiProgress.newBar('', {
-            complete: '=', incomplete: ' ', width: 20, total: response.data.ResultInfo.Total,
-          });
-        }
         start += (results + 1);
         count = response.data.ResultInfo.Count;
+        progress.total = response.data.ResultInfo.Total;
         return response.data.Feature.reduce((prev, v) => {
           const geo = v.Geometry.Coordinates.split(',');
           return prev.then(() => db.sequelize.models.entities.create({
@@ -132,14 +126,13 @@ const typeRunner = {
             geo: db.Sequelize.fn('ST_GeomFromText', `POINT(${geo[1]} ${geo[0]})`),
             geo_text: `${geo[1]},${geo[0]}`,
             pref_id: v.Property.GovernmentCode.substr(0, 2),
-            city_id: v.Property.GovernmentCode.substr(2, 3),
-          })).then(() => {
+            city_id: v.Property.GovernmentCode,
+          }).catch(() => Promise.resolve()).then(() => {
             progress.tick();
-          });
+          }));
         }, Promise.resolve());
       });
     }
-    multiProgress.terminate();
   },
   Zoo() {
     console.log('Sorry, This data is impossible');
@@ -167,7 +160,9 @@ function showPrompts() {
     ])
     .then(async (answers) => {
       if (!answers.run) return;
-      await answers.type.reduce((prev, curr) => prev.then(typeRunner[curr]), Promise.resolve());
+      const multiProgress = new MultiProgress(process.stdout);
+      await answers.type.reduce((prev, curr) => prev.then(() => typeRunner[curr](multiProgress)),
+        Promise.resolve());
       db.sequelize.close();
       console.log('Complete!');
     });
