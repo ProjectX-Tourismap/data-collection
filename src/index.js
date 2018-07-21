@@ -73,17 +73,24 @@ const typeRunner = {
           lon: cur.lng,
         })}`,
       })).then(res => `${res.data.result.municipality.mcode}`).catch(() => Promise.resolve())
-        .then(cityCode => ((cityCode) ? db.sequelize.models.entities.create({
-          name: 'Manhole',
-          desc: cur.text,
-          category_id: (Array.isArray(row) ? row[0] : row).dataValues.id,
-          geo: db.Sequelize.fn('ST_GeomFromText', `POINT(${cur.lat} ${cur.lng})`),
-          geo_text: `${cur.lat},${cur.lng}`,
-          pref_id: cityCode.substr(0, 2),
-          city_id: cityCode,
-        }).catch(() => Promise.resolve()).then(() => {
-          progress.tick();
-        }) : Promise.resolve())), Promise.resolve());
+        .then((cityCode) => {
+          const values = {
+            name: 'Manhole',
+            desc: cur.text,
+            category_id: (Array.isArray(row) ? row[0] : row).dataValues.id,
+            geo: db.Sequelize.fn('ST_GeomFromText', `POINT(${cur.lat} ${cur.lng})`),
+            geo_text: `${cur.lat},${cur.lng}`,
+            pref_id: cityCode.substr(0, 2),
+            city_id: cityCode,
+          };
+          if (process.env.DB_DIALECT === 'sqlite') delete values.geo;
+          return (cityCode) ? db.sequelize.models.entities.create(values).catch((e) => {
+            console.error(e);
+            return Promise.resolve();
+          }).then(() => {
+            progress.tick();
+          }) : Promise.resolve();
+        }), Promise.resolve());
     }));
   },
   async Temple(multiProgress) {
@@ -119,17 +126,22 @@ const typeRunner = {
         progress.total = response.data.ResultInfo.Total;
         return response.data.Feature.reduce((prev, v) => {
           const geo = v.Geometry.Coordinates.split(',');
-          return prev.then(() => db.sequelize.models.entities.create({
-            name: v.Name,
-            desc: v.Description || '',
-            category_id: categoryId,
-            geo: db.Sequelize.fn('ST_GeomFromText', `POINT(${geo[1]} ${geo[0]})`),
-            geo_text: `${geo[1]},${geo[0]}`,
-            pref_id: v.Property.GovernmentCode.substr(0, 2),
-            city_id: v.Property.GovernmentCode,
-          }).catch(() => Promise.resolve()).then(() => {
-            progress.tick();
-          }));
+          return prev.then(() => {
+            const values = {
+              name: v.Name,
+              desc: v.Description || '',
+              category_id: categoryId,
+              geo: db.Sequelize.fn('ST_GeomFromText', `POINT(${geo[1]} ${geo[0]})`),
+              geo_text: `${geo[1]},${geo[0]}`,
+              pref_id: v.Property.GovernmentCode.substr(0, 2),
+              city_id: v.Property.GovernmentCode,
+            };
+            if (process.env.DB_DIALECT === 'sqlite') delete values.geo;
+            return db.sequelize.models.entities.create(values)
+              .catch(() => Promise.resolve()).then(() => {
+                progress.tick();
+              });
+          });
         }, Promise.resolve());
       });
     }
