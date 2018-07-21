@@ -5,7 +5,9 @@ import mysql from 'mysql2';
 import axios from 'axios';
 import MultiProgress from 'multi-progress';
 import querystring from 'querystring';
+import tunnel from 'tunnel-ssh';
 import db from '../db/models';
+import config from '../config';
 
 dotenv.config();
 
@@ -180,18 +182,33 @@ function showPrompts() {
     });
 }
 
-console.log('Init databases');
-if (db.sequelize.getDialect() === 'mysql') {
-  const connection = mysql.createConnection({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASS,
-  });
-  connection.query(`CREATE DATABASE IF NOT EXISTS ${db.sequelize.options.database} CHARACTER SET utf8 COLLATE utf8_general_ci`, () => {
-    connection.close();
+const start = () => {
+  console.log('Init databases');
+  if (db.sequelize.getDialect() === 'mysql') {
+    const connection = mysql.createConnection({
+      host: process.env.DB_HOST,
+      port: process.env.DB_PORT,
+      user: process.env.DB_USER,
+      password: process.env.DB_PASS,
+    });
+    connection.query(`CREATE DATABASE IF NOT EXISTS ${db.sequelize.options.database} CHARACTER SET utf8 COLLATE utf8_general_ci`, () => {
+      connection.close();
+      db.sequelize.sync().then(showPrompts);
+    });
+  } else {
     db.sequelize.sync().then(showPrompts);
+  }
+};
+
+if (config.useTunnel) {
+  console.log('create ssh tunnel');
+  tunnel(config.tunnel, (error) => {
+    if (error) {
+      console.error(error);
+      process.exit();
+    }
+    start();
   });
 } else {
-  db.sequelize.sync().then(showPrompts);
+  start();
 }
