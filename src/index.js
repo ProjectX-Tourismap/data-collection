@@ -1,4 +1,5 @@
 /* eslint-disable no-console */
+import fs from 'fs';
 import dotenv from 'dotenv';
 import inquirer from 'inquirer';
 import mysql from 'mysql2';
@@ -20,38 +21,51 @@ const prefCodes = [
 ];
 
 const typeRunner = {
-  CityCodes(multiProgress) {
-    const prefProgress = multiProgress.newBar('Pref [:bar] :percent :current/:total', {
+  async CityCodes(multiProgress) {
+    /* 都道府県をSQLに登録 */
+    await Promise.all(prefCodes.map(
+      (name, i) => db.sequelize.models.pref_codes.create({ id: i + 1, name }),
+    ));
+
+    /* 都道府県ごとの市町村コードをフェッチ */
+    let cityProgress = multiProgress.newBar('[:bar] :percent :current/:total Fetching CityCodes', {
       complete: '=', incomplete: ' ', width: 20, total: prefCodes.length,
     });
-    prefProgress.tick(0);
-    const cityProgress = multiProgress.newBar('City [:bar] :percent :current/:total', {
-      complete: '=', incomplete: ' ', width: 20, total: 0,
-    });
-
-    return prefCodes.reduce((prev, curr, index) => prev.then(() => db.sequelize.models
-      .pref_codes.create({ id: index + 1, name: curr }))
-      .then(() => axios({
+    let data = [...new Array(prefCodes.length).keys()].map(async (i) => {
+      const res = await axios({
         method: 'get',
-        url: `http://www.land.mlit.go.jp/webland/api/CitySearch?${querystring.stringify({ area: `00${index + 1}`.slice(-2) })}`,
-      }))
-      .then(res => res.data.data)
-      .then((data) => {
-        cityProgress.total = data.length;
-        cityProgress.curr = 0;
-        return data.reduce((pre, cur) => pre.then(() => db.sequelize.models.city_codes.create({
-          id: parseInt(cur.id, 10),
-          pref_id: index + 1,
-          name: cur.name,
-        })).then(() => {
-          cityProgress.tick();
-        }), Promise.resolve());
-      })
-      .then(() => {
-        prefProgress.tick();
-      }), Promise.resolve());
+        baseURL: 'http://www.land.mlit.go.jp/webland/api/CitySearch',
+        params: { area: `0${i + 1}`.slice(-2) },
+      });
+      cityProgress.tick();
+      return res.data.data;
+    });
+    data = await Promise.all(data);
+    cityProgress.terminate();
+
+    /* フェッチした市町村コードをSQLに登録 */
+    cityProgress = multiProgress.newBar('[:bar] :percent :current/:total Writing CityCodes', {
+      complete: '=', incomplete: ' ', width: 20, total: prefCodes.length,
+    });
+    let insertPromise = Promise.resolve();
+    data.forEach((cities, i) => {
+      cities.forEach((city) => {
+        insertPromise = insertPromise.then(async () => {
+          await db.sequelize.models.city_codes.create({
+            id: parseInt(city.id, 10),
+            pref_id: i + 1,
+            name: city.name,
+          });
+        });
+      });
+      insertPromise = insertPromise.then(async () => {
+        cityProgress.tick();
+      });
+    });
+    await insertPromise;
+    cityProgress.terminate();
   },
-  Manhole(multiProgress) {
+  async Manhole(multiProgress) {
     const progress = multiProgress.newBar('Manhole [:bar] :percent :current/:total', {
       complete: '=', incomplete: ' ', width: 20, total: 0,
     });
@@ -61,7 +75,7 @@ const typeRunner = {
     }).then(row => axios({
       method: 'get',
       url: `http://manholemap.juge.me/customsearch?${querystring.stringify({
-        where: 'misc like \'東京都%\' and text not like \'%\\n%\'',
+        where: 'misc like \'神奈川%\' and text not like \'%\\n%\' limit 5',
         format: 'json',
       })}`,
     }).then((response) => {
@@ -89,6 +103,14 @@ const typeRunner = {
           return (cityCode) ? db.sequelize.models.entities.create(values).catch((e) => {
             console.error(e);
             return Promise.resolve();
+          }).then(async (model) => {
+            const image = await axios({
+              method: 'get',
+              url: `http://manholemap.juge.me/get?id=${cur.id}`,
+              responseType: 'arraybuffer',
+            });
+            fs.writeFileSync(`${process.env.STORAGE}/${model.dataValues.id}.jpg`,
+              Buffer.from(image), 'binary');
           }).then(() => {
             progress.tick();
           }) : Promise.resolve();
@@ -153,62 +175,63 @@ const typeRunner = {
   },
 };
 
-function showPrompts() {
-  inquirer
-    .prompt([
-      {
-        type: 'checkbox',
-        name: 'type',
-        message: 'Select insert data',
-        choices: ['CityCodes', 'Manhole', 'Temple', 'Zoo'],
-        validate(input) {
-          return input.length !== 0 ? true : 'Select at least one';
-        },
-      },
-      {
-        type: 'confirm',
-        name: 'run',
-        message: 'Will you execute it?',
-        default: false,
-      },
-    ])
-    .then(async (answers) => {
-      if (!answers.run) return;
-      const multiProgress = new MultiProgress(process.stdout);
-      await answers.type.reduce((prev, curr) => prev.then(() => typeRunner[curr](multiProgress)),
-        Promise.resolve());
-      db.sequelize.close();
-      console.log('Complete!');
-    });
-}
-
-const start = () => {
-  console.log('Init databases');
+const start = async () => {
   if (db.sequelize.getDialect() === 'mysql') {
-    const connection = mysql.createConnection({
-      host: process.env.DB_HOST,
-      port: process.env.DB_PORT,
-      user: process.env.DB_USER,
-      password: process.env.DB_PASS,
+    console.log('Init databases');
+    await new Promise((resolve) => {
+      const connection = mysql.createConnection({
+        host: process.env.DB_HOST,
+        port: process.env.DB_PORT,
+        user: process.env.DB_USER,
+        password: process.env.DB_PASS,
+      });
+      connection.query(`CREATE DATABASE IF NOT EXISTS ${db.sequelize.options.database} CHARACTER SET utf8 COLLATE utf8_general_ci`, () => {
+        connection.close();
+        resolve();
+      });
     });
-    connection.query(`CREATE DATABASE IF NOT EXISTS ${db.sequelize.options.database} CHARACTER SET utf8 COLLATE utf8_general_ci`, () => {
-      connection.close();
-      db.sequelize.sync().then(showPrompts);
-    });
-  } else {
-    db.sequelize.sync().then(showPrompts);
   }
+
+  await db.sequelize.sync();
+  const answers = await inquirer.prompt([
+    {
+      type: 'checkbox',
+      name: 'type',
+      message: 'Select insert data',
+      choices: ['CityCodes', 'Manhole', 'Temple', 'Zoo'],
+      validate(input) {
+        return input.length !== 0 ? true : 'Select at least one';
+      },
+    },
+    {
+      type: 'confirm',
+      name: 'run',
+      message: 'Will you execute it?',
+      default: false,
+    },
+  ]);
+  if (!answers.run) return;
+  const multiProgress = new MultiProgress(process.stdout);
+  await answers.type.reduce(
+    (prev, curr) => prev.then(() => typeRunner[curr](multiProgress)),
+    Promise.resolve(),
+  );
+  console.log('\nComplete!');
+  db.sequelize.close();
 };
 
-if (config.useTunnel) {
-  console.log('create ssh tunnel');
-  tunnel(config.tunnel, (error) => {
-    if (error) {
-      console.error(error);
-      process.exit();
-    }
-    start();
-  });
-} else {
-  start();
-}
+(async () => {
+  if (config.useTunnel) {
+    console.log('Create ssh tunnel');
+    await new Promise(((resolve, reject) => {
+      tunnel(config.tunnel, (error) => {
+        if (error) reject(error);
+        resolve();
+      });
+    }));
+  }
+  await start();
+})().catch((error) => {
+  console.error(error);
+  process.exit();
+});
